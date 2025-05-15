@@ -22,6 +22,18 @@ dependencies = [
 [tool.poetry]
 package-mode = false
 
+packages = [
+  { include = "app",      from = "src" },
+  { include = "config",   from = "src" },
+  { include = "core",     from = "src" },
+  { include = "ports",    from = "src" },
+  { include = "adapters", from = "src" },
+  { include = "services", from = "src" },
+  { include = "db",       from = "src" },
+  { include = "workers",  from = "src" },
+]
+
+
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
@@ -39,4 +51,8 @@ alembic = "^1.15.2"
 faker = "^37.3.0"
 pytest-httpx = "^0.35.0"
 pytest-postgresql = "^7.0.1"
+aiosqlite = "^0.21.0"
 
+[tool.pytest.ini_options]
+python_files = ["test_*.py"]
+testpaths = ["tests"]
