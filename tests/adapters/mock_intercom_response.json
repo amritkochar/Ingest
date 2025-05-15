@@ -1,0 +1,19 @@
+{
+    "conversations": [
+      {
+        "id": "abc123",
+        "created_at": 1700000000,
+        "language": "en",
+        "conversation_message": { "body": "Hello from Intercom!" },
+        "user": { "id": "user_1", "name": "Alice" }
+      },
+      {
+        "id": "def456",
+        "created_at": 1700003600,
+        "language": "fr",
+        "conversation_message": { "body": "Bonjour de Intercom!" },
+        "user": { "id": "user_2", "name": "Bob" }
+      }
+    ]
+  }
+  
