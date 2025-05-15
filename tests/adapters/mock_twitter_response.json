@@ -1,0 +1,17 @@
+{
+    "data": [
+      {
+        "id": "123",
+        "text": "Hello Twitter!",
+        "created_at": "2025-05-14T12:00:00Z",
+        "author_id": "user123"
+      },
+      {
+        "id": "456",
+        "text": "Another tweet",
+        "created_at": "2025-05-14T13:00:00Z",
+        "author_id": "user456"
+      }
+    ]
+  }
+  

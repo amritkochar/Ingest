@@ -33,11 +33,15 @@ class Settings(BaseSettings):
         "https://discourse.example.com",
         description="Base URL for Discourse API"
     )
-
-
-    # ── Secrets ──────────────────────────────────────────────────────
+    TWITTER_SEARCH_QUERY: str = Field(
+        ..., env="TWITTER_SEARCH_QUERY",
+        description="Twitter Recent Search query (e.g. '#feedback lang:en')"
+    )
+    TWITTER_BEARER_TOKEN: Optional[SecretStr] = Field(
+        None, env="TWITTER_BEARER_TOKEN",
+        description="Bearer token for Twitter API"
+    )
     INTERCOM_SECRET: Optional[SecretStr] = Field(None, description="HMAC key")
-    TWITTER_BEARER_TOKEN: Optional[SecretStr] = Field(None, description="Auth token")
 
     class Config:
         env_file = BASE_DIR / ".env"
