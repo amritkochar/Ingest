@@ -42,7 +42,7 @@ class PlaystorePullAdapter(BaseFetcher):
         params = {
             "startTime": since.isoformat(),
             "endTime": until.isoformat(),
-            "pageSize": self.page_size,
+            "pageSize": str(self.page_size),
         }
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
 

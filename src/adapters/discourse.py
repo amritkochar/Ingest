@@ -49,6 +49,7 @@ class DiscoursePullAdapter(BaseFetcher):
                 tenant_id=self.tenant_id,
                 created_at=datetime.utcnow(),
                 fetched_at=datetime.utcnow(),
+                lang = None,
                 body="This is a stub topic (fetch failure fallback)",
                 metadata_={},
             )
@@ -67,6 +68,7 @@ class DiscoursePullAdapter(BaseFetcher):
                 tenant_id=self.tenant_id,
                 created_at=created_at,
                 fetched_at=datetime.utcnow(),
+                lang = None,
                 body=topic.get("title"),
                 metadata_={"posts_count": topic.get("posts_count")},
             )

@@ -11,7 +11,7 @@ from config.settings import settings
 from services.ingest import ingest
 
 
-async def dispatch_all():
+async def dispatch_all() -> None:
     """
     For each configured instance of each platform, pull new records and ingest them.
     Only tenants present in PLATFORM_CONFIG for that platform are iterated.
@@ -24,8 +24,8 @@ async def dispatch_all():
     ps_since = now - timedelta(seconds=ps_interval)
     for tenant, apps in ps_cfg.get("apps", {}).items():
         for app_id in apps:
-            adapter = PlaystorePullAdapter(tenant, app_id)
-            async for fb in adapter.fetch(ps_since, now):
+            playstore_adapter = PlaystorePullAdapter(tenant, app_id)
+            async for fb in playstore_adapter.fetch(ps_since, now):
                 await ingest(fb)
 
     # ── Twitter ──────────────────────────────────────────────────
@@ -33,8 +33,8 @@ async def dispatch_all():
     tw_interval = settings.POLL_INTERVALS["twitter"]
     tw_since = now - timedelta(seconds=tw_interval)
     for tenant in tw_cfg.get("queries", {}).keys():
-        adapter = TwitterPullAdapter(tenant)
-        async for fb in adapter.fetch(tw_since, now):
+        twitter_adapter = TwitterPullAdapter(tenant)
+        async for fb in twitter_adapter.fetch(tw_since, now):
             await ingest(fb)
 
     # ── Discourse ────────────────────────────────────────────────
@@ -42,8 +42,8 @@ async def dispatch_all():
     dc_interval = settings.POLL_INTERVALS["discourse"]
     dc_since = now - timedelta(seconds=dc_interval)
     for tenant in dc_cfg.get("base_urls", {}).keys():
-        adapter = DiscoursePullAdapter(tenant)
-        async for fb in adapter.fetch(dc_since, now):
+        discourse_adapter = DiscoursePullAdapter(tenant)
+        async for fb in discourse_adapter.fetch(dc_since, now):
             await ingest(fb)
 
     # ── Intercom ─────────────────────────────────────────────────
@@ -51,12 +51,12 @@ async def dispatch_all():
     ic_interval = settings.POLL_INTERVALS["intercom"]
     ic_since = now - timedelta(seconds=ic_interval)
     for tenant in ic_cfg.get("secrets", {}).keys():
-        adapter = IntercomPullAdapter(tenant)
-        async for fb in adapter.fetch(ic_since, now):
+        intercom_adapter = IntercomPullAdapter(tenant)
+        async for fb in intercom_adapter.fetch(ic_since, now):
             await ingest(fb)
 
 
-def schedule_jobs():
+def schedule_jobs() -> None:
     """
     Schedule a single repeating job that calls dispatch_all()
     every DISPATCH_INTERVAL_SEC seconds.

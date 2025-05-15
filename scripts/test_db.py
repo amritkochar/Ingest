@@ -10,7 +10,7 @@ DATABASE_URL = os.getenv(
 )
 
 
-async def main():
+async def main() -> None:
     engine = create_async_engine(DATABASE_URL)
     async with engine.connect() as conn:
         result = await conn.execute(text("SELECT 1"))

@@ -10,7 +10,7 @@ from core.models import Feedback
 from services.ingest import ingest
 
 
-async def main():
+async def main() -> None:
     now = datetime.utcnow()
     platforms = list(settings.PLATFORM_CONFIG.keys())
 
@@ -40,7 +40,7 @@ async def main():
 
         # random timestamp in last 30 days
         created_at = now - timedelta(days=random.random() * 30)
-        fetched_at = created_at + timedelta(seconds=random.randint(1,300))
+        fetched_at = created_at + timedelta(seconds=random.randint(1, 300))
 
         fb = Feedback(
             id=uuid.uuid4(),
@@ -57,6 +57,7 @@ async def main():
 
         inserted = await ingest(fb)
         print(f"{'→' if inserted else '✗'} {fb.external_id}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

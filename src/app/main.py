@@ -34,13 +34,13 @@ app = FastAPI(lifespan=lifespan)
 
 # ── Health Check ────────────────────────────────────────
 @app.get("/healthz")
-async def healthz():
+async def healthz() -> dict:
     return {"status": "ok"}
 
 
 # ── Webhook endpoint (Intercom push) ────────────────────────────────
 @app.post("/webhook/intercom/{tenant_id}")
-async def intercom_webhook(tenant_id: str, request: Request):
+async def intercom_webhook(tenant_id: str, request: Request) -> dict:
     payload = await request.json()
     payload["tenant_id"] = tenant_id
 
@@ -64,10 +64,7 @@ async def search_feedback(
     metadata_key: Optional[str] = Query(None),
     metadata_val: Optional[str] = Query(None),
     limit: int = Query(100, gt=0, le=1000),
-):
-    # start_query = Query(None)
-    # end_query = Query(None)
-
+) -> List[Feedback]:
     filters = [FeedbackORM.tenant_id == tenant_id]
     if source_type:
         filters.append(FeedbackORM.source_type == source_type)
@@ -76,7 +73,6 @@ async def search_feedback(
     if end is not None:
         filters.append(FeedbackORM.created_at <= end)
     if metadata_key and metadata_val:
-        # metadata_ ->> key = value
         filters.append(FeedbackORM.metadata_[metadata_key].astext == metadata_val)
 
     async with AsyncSessionLocal() as session:
@@ -89,7 +85,7 @@ async def search_feedback(
 
 # ── Fetch a specific feedback by its UUID ───────────────────────────
 @app.get("/feedback/{feedback_id}", response_model=Feedback)
-async def get_feedback(feedback_id: UUID, tenant_id: str = Query(...)):
+async def get_feedback(feedback_id: UUID, tenant_id: str = Query(...)) -> Feedback:
     async with AsyncSessionLocal() as session:
         fb_orm = await session.get(FeedbackORM, feedback_id)
     if not fb_orm or fb_orm.tenant_id != tenant_id:

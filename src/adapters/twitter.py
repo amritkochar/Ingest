@@ -72,6 +72,7 @@ class TwitterPullAdapter(BaseFetcher):
                     tenant_id=self.tenant_id,
                     created_at=datetime.utcnow(),
                     fetched_at=datetime.utcnow(),
+                    lang = None,
                     body="Stub tweet due to rate limit or auth error",
                     metadata_={},
                 )
@@ -96,6 +97,7 @@ class TwitterPullAdapter(BaseFetcher):
                 tenant_id=self.tenant_id,
                 created_at=created_at,
                 fetched_at=datetime.utcnow(),
+                lang = None,
                 body=text,
                 metadata_={
                     k: v

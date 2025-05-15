@@ -1,8 +1,10 @@
 # src/core/models.py
-from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, Any, Dict
+from typing import Any, Dict, Optional
 from uuid import UUID
+
+from pydantic import BaseModel
+
 
 class Feedback(BaseModel):
     id: UUID

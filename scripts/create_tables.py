@@ -5,7 +5,7 @@ from db.models import Base
 from db.session import engine
 
 
-async def main():
+async def main() -> None:
     async with engine.begin() as conn:
         # Drop & recreate all tables (safe in dev)
         await conn.run_sync(Base.metadata.drop_all)
