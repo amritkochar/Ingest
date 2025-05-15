@@ -8,13 +8,17 @@ import pytest
 from adapters.discourse import DiscoursePullAdapter
 from config.settings import settings
 
+TENANT = "tenant1"
+
 
 @pytest.fixture(autouse=True)
 def ensure_base_url(monkeypatch):
     """
-    Make sure settings.DISCOURSE_BASE_URL is set so __init__ won't fail.
+    Make sure settings.DISCOURSE_BASE_URLS contains our test tenant.
     """
-    monkeypatch.setattr(settings, "DISCOURSE_BASE_URL", "https://discourse.example.com")
+    monkeypatch.setitem(
+        settings.DISCOURSE_BASE_URLS, TENANT, "https://discourse.example.com"
+    )
 
 
 @pytest.fixture
@@ -26,7 +30,7 @@ def mock_discourse_response():
 
 @pytest.mark.asyncio
 async def test_fetch_success(mock_discourse_response, monkeypatch):
-    """Should yield one Feedback per topic in the JSON."""
+    """Should yield one Feedback per topic with correct tenant tagging."""
 
     async def mock_get(self, url, params=None):
         class MockResponse:
@@ -44,7 +48,7 @@ async def test_fetch_success(mock_discourse_response, monkeypatch):
 
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
-    adapter = DiscoursePullAdapter()
+    adapter = DiscoursePullAdapter(TENANT)
     since = datetime.utcnow() - timedelta(days=1)
     until = datetime.utcnow()
 
@@ -52,14 +56,16 @@ async def test_fetch_success(mock_discourse_response, monkeypatch):
     assert len(feedbacks) == len(mock_discourse_response["topics"])
 
     first = mock_discourse_response["topics"][0]
-    assert feedbacks[0].external_id == str(first["id"])
-    assert feedbacks[0].body == first["title"]
-    assert feedbacks[0].metadata_["posts_count"] == first["posts_count"]
+    fb0 = feedbacks[0]
+    assert fb0.external_id == str(first["id"])
+    assert fb0.body == first["title"]
+    assert fb0.metadata_["posts_count"] == first["posts_count"]
+    assert fb0.tenant_id == TENANT
 
 
 @pytest.mark.asyncio
 async def test_fetch_404_fallback(monkeypatch):
-    """Should emit a single stub Feedback on HTTP 404."""
+    """Should emit a single stub Feedback tagged with the tenant on any error."""
 
     async def mock_get(self, url, params=None):
         class MockResponse:
@@ -76,12 +82,14 @@ async def test_fetch_404_fallback(monkeypatch):
 
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
-    adapter = DiscoursePullAdapter()
+    adapter = DiscoursePullAdapter(TENANT)
     since = datetime.utcnow() - timedelta(days=1)
     until = datetime.utcnow()
 
     feedbacks = [fb async for fb in adapter.fetch(since, until)]
     assert len(feedbacks) == 1
+
     fb = feedbacks[0]
     assert fb.external_id == "stub-discourse"
     assert "stub topic" in fb.body.lower()
+    assert fb.tenant_id == TENANT
