@@ -13,40 +13,44 @@ from services.ingest import ingest
 
 async def dispatch_all():
     """
-    For each tenant, for each configured instance of each platform,
-    pull new records and ingest them.
+    For each configured instance of each platform, pull new records and ingest them.
+    Only tenants present in PLATFORM_CONFIG for that platform are iterated.
     """
     now = datetime.utcnow()
 
     # ── Play Store ────────────────────────────────────────────────
+    ps_cfg = settings.PLATFORM_CONFIG.get("playstore", {})
     ps_interval = settings.POLL_INTERVALS["playstore"]
     ps_since = now - timedelta(seconds=ps_interval)
-    for tenant in settings.TENANTS:
-        for app_id in settings.PLATFORM_CONFIG["playstore"]["apps"].get(tenant, []):
+    for tenant, apps in ps_cfg.get("apps", {}).items():
+        for app_id in apps:
             adapter = PlaystorePullAdapter(tenant, app_id)
             async for fb in adapter.fetch(ps_since, now):
                 await ingest(fb)
 
-    # ── Twitter ─────────────────────────────────────────────────
+    # ── Twitter ──────────────────────────────────────────────────
+    tw_cfg = settings.PLATFORM_CONFIG.get("twitter", {})
     tw_interval = settings.POLL_INTERVALS["twitter"]
     tw_since = now - timedelta(seconds=tw_interval)
-    for tenant in settings.TENANTS:
+    for tenant in tw_cfg.get("queries", {}).keys():
         adapter = TwitterPullAdapter(tenant)
         async for fb in adapter.fetch(tw_since, now):
             await ingest(fb)
 
-    # ── Discourse ───────────────────────────────────────────────
+    # ── Discourse ────────────────────────────────────────────────
+    dc_cfg = settings.PLATFORM_CONFIG.get("discourse", {})
     dc_interval = settings.POLL_INTERVALS["discourse"]
     dc_since = now - timedelta(seconds=dc_interval)
-    for tenant in settings.TENANTS:
+    for tenant in dc_cfg.get("base_urls", {}).keys():
         adapter = DiscoursePullAdapter(tenant)
         async for fb in adapter.fetch(dc_since, now):
             await ingest(fb)
 
-    # ── Intercom ────────────────────────────────────────────────
+    # ── Intercom ─────────────────────────────────────────────────
+    ic_cfg = settings.PLATFORM_CONFIG.get("intercom", {})
     ic_interval = settings.POLL_INTERVALS["intercom"]
     ic_since = now - timedelta(seconds=ic_interval)
-    for tenant in settings.TENANTS:
+    for tenant in ic_cfg.get("secrets", {}).keys():
         adapter = IntercomPullAdapter(tenant)
         async for fb in adapter.fetch(ic_since, now):
             await ingest(fb)
