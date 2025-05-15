@@ -1,13 +1,13 @@
+# src/ports/push_handler.py
 from abc import ABC, abstractmethod
-from typing import Dict
-
 from core.models import Feedback
 
-
 class BasePushHandler(ABC):
+    """
+    A push‐handler must implement handle(payload) to
+    validate, normalize and return a single Feedback.
+    """
+
     @abstractmethod
-    async def handle(self, payload: Dict) -> Feedback:
-        """
-        Normalize an incoming webhook payload into a Feedback object.
-        """
+    async def handle(self, payload: dict) -> Feedback:
         ...

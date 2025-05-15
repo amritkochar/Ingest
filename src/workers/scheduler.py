@@ -1,63 +1,55 @@
+# src/workers/scheduler.py
 import asyncio
 from datetime import datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from adapters.discourse import DiscoursePullAdapter
-from adapters.intercom import IntercomPullAdapter
+from config.settings import settings
 from adapters.playstore import PlaystorePullAdapter
 from adapters.twitter import TwitterPullAdapter
-from config.settings import settings
+from adapters.discourse import DiscoursePullAdapter
+from adapters.intercom import IntercomPullAdapter
 from services.ingest import ingest
 
-
-async def _run_pull(adapter, interval_sec):
-    """
-    Fetch from `interval_sec` ago until now and ingest.
-    """
+async def _run_tenant_pulls(tenant_id: str):
     now = datetime.utcnow()
-    since = now - timedelta(seconds=interval_sec)
-    async for fb in adapter.fetch(since=since, until=now):
+
+    # Playstore
+    ps_since = now - timedelta(seconds=settings.PLAYSTORE_POLL_INTERVAL_SEC)
+    ps_adapter = PlaystorePullAdapter(tenant_id)
+    async for fb in ps_adapter.fetch(ps_since, now):
         await ingest(fb)
 
+    # Twitter
+    tw_since = now - timedelta(seconds=settings.TWITTER_POLL_INTERVAL_SEC)
+    tw_adapter = TwitterPullAdapter(tenant_id)
+    async for fb in tw_adapter.fetch(tw_since, now):
+        await ingest(fb)
+
+    # Discourse
+    dc_since = now - timedelta(seconds=settings.DISCOURSE_POLL_INTERVAL_SEC)
+    dc_adapter = DiscoursePullAdapter(tenant_id)
+    async for fb in dc_adapter.fetch(dc_since, now):
+        await ingest(fb)
+
+    # Intercom
+    ic_since = now - timedelta(seconds=settings.INTERCOM_POLL_INTERVAL_SEC)
+    ic_adapter = IntercomPullAdapter(tenant_id)
+    async for fb in ic_adapter.fetch(ic_since, now):
+        await ingest(fb)
 
 def schedule_jobs():
-    # 1. Get the running event loop (Uvicorn’s loop)
-    loop = (
-        asyncio.get_event_loop()
-    )  # returns the currently running loop :contentReference[oaicite:5]{index=5}
+    loop = asyncio.get_event_loop()
+    scheduler = AsyncIOScheduler(event_loop=loop)
 
-    # 2. Bind scheduler to that loop
-    scheduler = AsyncIOScheduler(
-        event_loop=loop
-    )  # ensures jobs run in this loop :contentReference[oaicite:6]{index=6}
+    # one job per tenant, all sources together
+    for tenant in settings.TENANTS:
+        scheduler.add_job(
+            _run_tenant_pulls,
+            trigger=IntervalTrigger(seconds=settings.DISPATCH_INTERVAL_SEC),
+            args=[tenant],
+            id=f"pull_all_{tenant}"
+        )
 
-    # 3. Register each pull as a coroutine job
-    scheduler.add_job(
-        _run_pull,
-        trigger=IntervalTrigger(seconds=settings.PLAYSTORE_POLL_INTERVAL_SEC),
-        args=[PlaystorePullAdapter(), settings.PLAYSTORE_POLL_INTERVAL_SEC],
-        id="playstore_pull",
-    )
-    scheduler.add_job(
-        _run_pull,
-        trigger=IntervalTrigger(seconds=settings.TWITTER_POLL_INTERVAL_SEC),
-        args=[TwitterPullAdapter(), settings.TWITTER_POLL_INTERVAL_SEC],
-        id="twitter_pull",
-    )
-    scheduler.add_job(
-        _run_pull,
-        trigger=IntervalTrigger(seconds=settings.DISCOURSE_POLL_INTERVAL_SEC),
-        args=[DiscoursePullAdapter(), settings.DISCOURSE_POLL_INTERVAL_SEC],
-        id="discourse_pull",
-    )
-    scheduler.add_job(
-        _run_pull,
-        trigger=IntervalTrigger(seconds=settings.INTERCOM_POLL_INTERVAL_SEC),
-        args=[IntercomPullAdapter(), settings.INTERCOM_POLL_INTERVAL_SEC],
-        id="intercom_pull",
-    )
-
-    # 4. Start the scheduler (non‐blocking)
-    scheduler.start()  # runs within the provided event loop :contentReference[oaicite:7]{index=7}
+    scheduler.start()

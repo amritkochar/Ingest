@@ -1,61 +1,32 @@
+# src/services/ingest.py
 import logging
-
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
-
-from core.models import Feedback
 from db.models import FeedbackORM
 from db.session import AsyncSessionLocal
+from core.models import Feedback
 
 logger = logging.getLogger(__name__)
 
-
 async def ingest(feedback: Feedback) -> bool:
     """
-    Upsert a single Feedback into the DB. Returns True if inserted, False if duplicate.
+    Insert a Feedback record. Returns True if inserted, False if a duplicate or on error.
+    This version simply ADDs the ORM object and relies on the DB's unique constraint
+    (tenant_id, source_type, external_id, source_instance) turning duplicates into
+    IntegrityError, which we catch and treat as "not inserted".
     """
-    try:
-        async with AsyncSessionLocal() as session:  # type: AsyncSession
-            stmt = (
-                pg_insert(FeedbackORM)
-                .values(
-                    id=feedback.id,
-                    external_id=feedback.external_id,
-                    source_type=feedback.source_type,
-                    source_instance=feedback.source_instance,
-                    tenant_id=feedback.tenant_id,
-                    created_at=feedback.created_at,
-                    fetched_at=feedback.fetched_at,
-                    lang=feedback.lang,
-                    body=feedback.body,
-                    metadata_=feedback.metadata_,
-                )
-                .on_conflict_do_nothing(
-                    index_elements=[
-                        "tenant_id",
-                        "source_type",
-                        "external_id",
-                        "source_instance",
-                    ]
-                )
-            )
-            # import pdb
-            # pdb.set_trace()
-            result = await session.execute(stmt)
+    async with AsyncSessionLocal() as session:
+        try:
+            # build ORM instance directly
+            obj = FeedbackORM(**feedback.dict())
+            session.add(obj)
             await session.commit()
-
-            inserted = result.rowcount == 1
-            # pdb.set_trace()
-            if not inserted:
-                logger.info(f"Duplicate feedback skipped: {feedback.external_id}")
-            else:
-                logger.info(f"Inserted feedback: {feedback.external_id}")
-            return inserted
-    except IntegrityError as e:
-        logger.error(f"IntegrityError: {e}")
-        await session.rollback()
-        return False
-    except Exception as e:
-        logger.error(f"Error ingesting feedback: {e}")
-        await session.rollback()
-        return False
+            logger.info(f"Inserted feedback: {feedback.external_id}")
+            return True
+        except IntegrityError:
+            await session.rollback()
+            logger.info(f"Duplicate feedback skipped: {feedback.external_id}")
+            return False
+        except Exception as e:
+            await session.rollback()
+            logger.error(f"Error ingesting feedback {feedback.external_id}: {e}")
+            return False
