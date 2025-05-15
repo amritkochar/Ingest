@@ -15,14 +15,23 @@ logger = logging.getLogger(__name__)
 
 
 class PlaystorePullAdapter(BaseFetcher):
-    def __init__(self):
-        self.app_id = settings.PLAYSTORE_APP_ID
+    """
+    Pull user reviews from Google Play Store for a specific tenant.
+    """
+
+    BASE_URL = "https://playstore.googleapis.com/v1/applications"
+
+    def __init__(self, tenant_id: str):
+        self.tenant_id = tenant_id
+        self.app_id = settings.PLAYSTORE_APPS.get(tenant_id)
+        if not self.app_id:
+            raise AdapterError(f"No Playstore app ID for tenant '{tenant_id}'")
         self.api_key = settings.PLAYSTORE_API_KEY or ""
         self.page_size = settings.PAGE_SIZE
         self.client = httpx.AsyncClient(timeout=10)
 
     async def fetch(self, since: datetime, until: datetime) -> AsyncIterator[Feedback]:
-        url = f"https://playstore.googleapis.com/v1/applications/{self.app_id}/reviews"
+        url = f"{self.BASE_URL}/{self.app_id}/reviews"
         params = {
             "startTime": since.isoformat(),
             "endTime": until.isoformat(),
@@ -34,16 +43,17 @@ class PlaystorePullAdapter(BaseFetcher):
             resp = await self.client.get(url, params=params, headers=headers)
             resp.raise_for_status()
         except HTTPStatusError as e:
-            if e.response.status_code == 404 or e.response.status_code == 401:
+            code = e.response.status_code if e.response else None
+            if code in (401, 404):
                 logger.warning(
-                    f"Play Store API 404 for app {self.app_id}, emitting stub review"
+                    f"Playstore fetch error {code} for app {self.app_id}; emitting stub review for {self.tenant_id}"
                 )
                 yield Feedback(
                     id=uuid.uuid4(),
                     external_id="stub-1",
                     source_type="playstore",
                     source_instance=self.app_id,
-                    tenant_id="default",
+                    tenant_id=self.tenant_id,
                     created_at=datetime.utcnow(),
                     fetched_at=datetime.utcnow(),
                     lang="en",
@@ -51,7 +61,7 @@ class PlaystorePullAdapter(BaseFetcher):
                     metadata_={},
                 )
                 return
-            raise AdapterError(f"Play Store fetch failed: {e}") from e
+            raise AdapterError(f"Playstore fetch failed: {e}") from e
 
         data = resp.json()
         for item in data.get("reviews", []):
@@ -60,12 +70,12 @@ class PlaystorePullAdapter(BaseFetcher):
                 created_at = datetime.fromisoformat(item.get("createTime"))
             except Exception:
                 created_at = datetime.utcnow()
-            fb = Feedback(
+            yield Feedback(
                 id=uuid.uuid5(uuid.NAMESPACE_URL, ext_id),
                 external_id=ext_id,
                 source_type="playstore",
                 source_instance=self.app_id,
-                tenant_id="default",
+                tenant_id=self.tenant_id,
                 created_at=created_at,
                 fetched_at=datetime.utcnow(),
                 lang=item.get("languageCode"),
@@ -76,6 +86,5 @@ class PlaystorePullAdapter(BaseFetcher):
                     if k not in ("reviewId", "createTime", "comment")
                 },
             )
-            yield fb
 
         await self.client.aclose()
