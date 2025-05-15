@@ -4,10 +4,8 @@ from datetime import datetime
 from typing import AsyncIterator
 
 import httpx
-from httpx import HTTPStatusError
 
 from config.settings import settings
-from core.exceptions import AdapterError
 from core.models import Feedback
 from ports.fetcher import BaseFetcher
 
@@ -22,31 +20,30 @@ class DiscoursePullAdapter(BaseFetcher):
         self.base_url = settings.DISCOURSE_BASE_URL.rstrip("/")
         self.client = httpx.AsyncClient(timeout=10)
 
-    async def fetch(
-        self, since: datetime, until: datetime
-    ) -> AsyncIterator[Feedback]:
+    async def fetch(self, since: datetime, until: datetime) -> AsyncIterator[Feedback]:
         url = f"{self.base_url}/search.json"
         params = {"q": "feedback"}  # static search term for now
 
         try:
             resp = await self.client.get(url, params=params)
             resp.raise_for_status()
-        except HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning("Discourse 404 – emitting stub topic")
-                yield Feedback(
-                    id=uuid.uuid4(),
-                    external_id="stub-discourse",
-                    source_type="discourse",
-                    source_instance=self.base_url,
-                    tenant_id="default",
-                    created_at=datetime.utcnow(),
-                    fetched_at=datetime.utcnow(),
-                    body="This is a stub topic (404 fallback)",
-                    metadata_={},
-                )
-                return
-            raise AdapterError(f"Discourse fetch failed: {e}") from e
+        except Exception as e:
+            # catch HTTPStatusError, ConnectError, timeouts, etc.
+            logger.warning(
+                f"Discourse fetch error ({type(e).__name__}): {e}; emitting stub topic"
+            )
+            yield Feedback(
+                id=uuid.uuid4(),
+                external_id="stub-discourse",
+                source_type="discourse",
+                source_instance=self.base_url,
+                tenant_id="default",
+                created_at=datetime.utcnow(),
+                fetched_at=datetime.utcnow(),
+                body="This is a stub topic (fetch failure fallback)",
+                metadata_={},
+            )
+            return
 
         data = resp.json()
         for topic in data.get("topics", []):

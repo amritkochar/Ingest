@@ -39,12 +39,15 @@ async def ingest(feedback: Feedback) -> bool:
                     ]
                 )
             )
+            # import pdb
+            # pdb.set_trace()
             result = await session.execute(stmt)
             await session.commit()
 
             inserted = result.rowcount == 1
+            # pdb.set_trace()
             if not inserted:
-                logger.debug(f"Duplicate feedback skipped: {feedback.external_id}")
+                logger.info(f"Duplicate feedback skipped: {feedback.external_id}")
             else:
                 logger.info(f"Inserted feedback: {feedback.external_id}")
             return inserted

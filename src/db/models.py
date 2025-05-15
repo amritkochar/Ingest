@@ -1,4 +1,7 @@
-from sqlalchemy import JSON, Column, DateTime, String, UniqueConstraint
+# src/db/models.py
+
+from sqlalchemy import Column, DateTime, Index, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import declarative_base
 
@@ -15,6 +18,8 @@ class FeedbackORM(Base):
             "source_instance",
             name="uq_feedback_tenant_source_external",
         ),
+        # GIN index on metadata_ JSONB
+        Index("idx_feedback_metadata", "metadata_", postgresql_using="gin"),
     )
 
     id = Column(PGUUID(as_uuid=True), primary_key=True)
@@ -26,4 +31,4 @@ class FeedbackORM(Base):
     fetched_at = Column(DateTime(timezone=True), nullable=True)
     lang = Column(String, nullable=True)
     body = Column(String, nullable=True)
-    metadata_ = Column(JSON, nullable=False, default={})
+    metadata_ = Column(JSONB, nullable=False, default={})

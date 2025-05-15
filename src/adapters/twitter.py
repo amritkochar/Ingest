@@ -52,7 +52,7 @@ class TwitterPullAdapter(BaseFetcher):
             resp.raise_for_status()
         except HTTPStatusError as e:
             # Rate-limit fallback stub
-            if e.response.status_code == 429:
+            if e.response.status_code == 429 or e.response.status_code == 401:
                 logger.warning("Twitter rate limit hit; emitting stub tweet")
                 yield Feedback(
                     id=uuid.uuid4(),

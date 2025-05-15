@@ -34,7 +34,7 @@ class PlaystorePullAdapter(BaseFetcher):
             resp = await self.client.get(url, params=params, headers=headers)
             resp.raise_for_status()
         except HTTPStatusError as e:
-            if e.response.status_code == 404:
+            if e.response.status_code == 404 or e.response.status_code == 401:
                 logger.warning(
                     f"Play Store API 404 for app {self.app_id}, emitting stub review"
                 )

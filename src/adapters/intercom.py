@@ -45,7 +45,7 @@ class IntercomPullAdapter(BaseFetcher):
             resp = await self.client.get(url, params=params, headers=self.headers)
             resp.raise_for_status()
         except HTTPStatusError as e:
-            if e.response.status_code == 404:
+            if e.response.status_code == 404 or e.response.status_code == 401:
                 logger.warning("Intercom 404 – emitting stub conversation")
                 yield Feedback(
                     id=uuid.uuid4(),
