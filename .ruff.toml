@@ -1,0 +1,8 @@
+# .ruff.toml
+line-length = 88
+target-version = "py311"
+exclude = ["migrations", "__pycache__"]
+
+[lint]
+select = ["E", "F", "B", "I"]  # Errors, Pyflakes, bugbear, isort
+ignore = ["E501"]             # Ignore long line errors (Black handles it)
