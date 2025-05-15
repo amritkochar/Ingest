@@ -1,6 +1,8 @@
 # src/ports/push_handler.py
 from abc import ABC, abstractmethod
+
 from core.models import Feedback
+
 
 class BasePushHandler(ABC):
     """
@@ -9,5 +11,4 @@ class BasePushHandler(ABC):
     """
 
     @abstractmethod
-    async def handle(self, payload: dict) -> Feedback:
-        ...
+    async def handle(self, payload: dict) -> Feedback: ...

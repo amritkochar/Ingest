@@ -1,3 +1,4 @@
+# tests/adapters/test_twitter.py
 import json
 import os
 from datetime import datetime, timedelta
@@ -12,14 +13,14 @@ from config.settings import settings
 TENANT = "tenant1"
 TEST_QUERY = "#feedback1 lang:en"
 
+
 @pytest.fixture(autouse=True)
 def ensure_twitter_settings(monkeypatch):
-    """
-    Populate settings.TWITTER_BEARER_TOKENS and TWITTER_QUERIES
-    for our test tenant so __init__ won't fail.
-    """
-    monkeypatch.setitem(settings.TWITTER_BEARER_TOKENS, TENANT, SecretStr("dummy_token"))
-    monkeypatch.setitem(settings.TWITTER_QUERIES,     TENANT, TEST_QUERY)
+    cfg = settings.PLATFORM_CONFIG.setdefault("twitter", {})
+    tokens = cfg.setdefault("tokens", {})
+    queries = cfg.setdefault("queries", {})
+    monkeypatch.setitem(tokens, TENANT, SecretStr("dummy_token"))
+    monkeypatch.setitem(queries, TENANT, TEST_QUERY)
 
 
 @pytest.fixture
@@ -32,15 +33,19 @@ def mock_twitter_response():
 @pytest.mark.asyncio
 async def test_fetch_success(mock_twitter_response, monkeypatch):
     """Adapter yields one Feedback per tweet in the mock JSON, tagged with tenant."""
+
     async def mock_get(self, url, params=None, headers=None):
         class MockResponse:
             def __init__(self, payload):
                 self._payload = payload
                 self.status_code = 200
+
             def json(self):
                 return self._payload
+
             def raise_for_status(self):
                 pass
+
         return MockResponse(mock_twitter_response)
 
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
@@ -63,14 +68,18 @@ async def test_fetch_success(mock_twitter_response, monkeypatch):
 @pytest.mark.asyncio
 async def test_rate_limit_fallback(monkeypatch):
     """Adapter emits exactly one stub Feedback on HTTP 429 or 401."""
+
     async def mock_get(self, url, params=None, headers=None):
         class MockResponse:
             def __init__(self):
                 self.status_code = 429
+
             def json(self):
                 return {}
+
             def raise_for_status(self):
                 raise httpx.HTTPStatusError("Rate limited", request=None, response=self)
+
         return MockResponse()
 
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)

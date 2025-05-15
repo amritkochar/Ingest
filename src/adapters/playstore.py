@@ -1,3 +1,4 @@
+# src/adapters/playstore.py
 import logging
 import uuid
 from datetime import datetime
@@ -16,17 +17,23 @@ logger = logging.getLogger(__name__)
 
 class PlaystorePullAdapter(BaseFetcher):
     """
-    Pull user reviews from Google Play Store for a specific tenant.
+    Pull user reviews from Google Play Store for a specific tenant and app instance.
     """
 
     BASE_URL = "https://playstore.googleapis.com/v1/applications"
 
-    def __init__(self, tenant_id: str):
+    def __init__(self, tenant_id: str, app_id: str):
         self.tenant_id = tenant_id
-        self.app_id = settings.PLAYSTORE_APPS.get(tenant_id)
-        if not self.app_id:
-            raise AdapterError(f"No Playstore app ID for tenant '{tenant_id}'")
-        self.api_key = settings.PLAYSTORE_API_KEY or ""
+        self.app_id = app_id
+
+        cfg = settings.PLATFORM_CONFIG.get("playstore", {})
+        apps_map = cfg.get("apps", {})
+        if app_id not in apps_map.get(tenant_id, []):
+            raise AdapterError(
+                f"App '{app_id}' is not configured for tenant '{tenant_id}'"
+            )
+
+        self.api_key = cfg.get("api_keys", {}).get(tenant_id, "")
         self.page_size = settings.PAGE_SIZE
         self.client = httpx.AsyncClient(timeout=10)
 
@@ -43,10 +50,10 @@ class PlaystorePullAdapter(BaseFetcher):
             resp = await self.client.get(url, params=params, headers=headers)
             resp.raise_for_status()
         except HTTPStatusError as e:
-            code = e.response.status_code if e.response else None
+            code = getattr(e.response, "status_code", None)
             if code in (401, 404):
                 logger.warning(
-                    f"Playstore fetch error {code} for app {self.app_id}; emitting stub review for {self.tenant_id}"
+                    f"[{self.tenant_id}:{self.app_id}] Playstore {code} → stub"
                 )
                 yield Feedback(
                     id=uuid.uuid4(),
@@ -57,7 +64,7 @@ class PlaystorePullAdapter(BaseFetcher):
                     created_at=datetime.utcnow(),
                     fetched_at=datetime.utcnow(),
                     lang="en",
-                    body="This is a stub review (404 fallback)",
+                    body="This is a stub review (404/401 fallback)",
                     metadata_={},
                 )
                 return
@@ -70,6 +77,7 @@ class PlaystorePullAdapter(BaseFetcher):
                 created_at = datetime.fromisoformat(item.get("createTime"))
             except Exception:
                 created_at = datetime.utcnow()
+
             yield Feedback(
                 id=uuid.uuid5(uuid.NAMESPACE_URL, ext_id),
                 external_id=ext_id,

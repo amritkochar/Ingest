@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 
 from adapters.intercom_push import IntercomPushHandler
 from config.settings import settings
@@ -35,10 +35,7 @@ async def startup_event():
 
 # ── Webhook endpoint (Intercom push) ────────────────────────────────
 @app.post("/webhook/intercom/{tenant_id}")
-async def intercom_webhook(
-    tenant_id: str,
-    request: Request
-):
+async def intercom_webhook(tenant_id: str, request: Request):
     payload = await request.json()
     payload["tenant_id"] = tenant_id
 

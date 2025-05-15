@@ -1,3 +1,4 @@
+# src/adapters/discourse.py
 import logging
 import uuid
 from datetime import datetime
@@ -11,6 +12,7 @@ from ports.fetcher import BaseFetcher
 
 logger = logging.getLogger(__name__)
 
+
 class DiscoursePullAdapter(BaseFetcher):
     """
     Pull “feedback” topics from a Discourse forum via its search API,
@@ -19,15 +21,15 @@ class DiscoursePullAdapter(BaseFetcher):
 
     def __init__(self, tenant_id: str):
         self.tenant_id = tenant_id
-        base = settings.DISCOURSE_BASE_URLS.get(tenant_id)
+        cfg = settings.PLATFORM_CONFIG.get("discourse", {})
+        base_urls = cfg.get("base_urls", {})
+        base = base_urls.get(tenant_id)
         if not base:
             raise ValueError(f"No Discourse URL configured for tenant '{tenant_id}'")
         self.base_url = base.rstrip("/")
         self.client = httpx.AsyncClient(timeout=10)
 
-    async def fetch(
-        self, since: datetime, until: datetime
-    ) -> AsyncIterator[Feedback]:
+    async def fetch(self, since: datetime, until: datetime) -> AsyncIterator[Feedback]:
         url = f"{self.base_url}/search.json"
         params = {"q": "feedback"}  # static for now
 
@@ -36,7 +38,8 @@ class DiscoursePullAdapter(BaseFetcher):
             resp.raise_for_status()
         except Exception as e:
             logger.warning(
-                f"Discourse fetch error ({type(e).__name__}): {e}; emitting stub topic for {self.tenant_id}"
+                f"Discourse fetch error ({type(e).__name__}): {e}; "
+                f"emitting stub topic for tenant '{self.tenant_id}'"
             )
             yield Feedback(
                 id=uuid.uuid4(),

@@ -1,3 +1,4 @@
+# tests/adapters/test_playstore.py
 import json
 import os
 from datetime import datetime, timedelta
@@ -14,12 +15,11 @@ TEST_APP_ID = "com.test.app"
 
 @pytest.fixture(autouse=True)
 def ensure_playstore_config(monkeypatch):
-    """
-    Make sure settings.PLAYSTORE_APPS and API key exist for our test tenant.
-    """
-    # inject mapping and a fake API key
-    monkeypatch.setitem(settings.PLAYSTORE_APPS, TENANT, TEST_APP_ID)
-    monkeypatch.setattr(settings, "PLAYSTORE_API_KEY", "fake-token")
+    pc = settings.PLATFORM_CONFIG.setdefault("playstore", {})
+    apps = pc.setdefault("apps", {})
+    api_keys = pc.setdefault("api_keys", {})
+    monkeypatch.setitem(apps, TENANT, [TEST_APP_ID])
+    monkeypatch.setitem(api_keys, TENANT, "fake-token")
 
 
 @pytest.fixture
@@ -32,7 +32,6 @@ def mock_playstore_response():
 
 @pytest.mark.asyncio
 async def test_fetch_success(mock_playstore_response, monkeypatch):
-    """Yields one Feedback per review and tags with tenant."""
     async def mock_get(self, url, params=None, headers=None):
         class MockResponse:
             def __init__(self, data):
@@ -49,7 +48,7 @@ async def test_fetch_success(mock_playstore_response, monkeypatch):
 
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
-    adapter = PlaystorePullAdapter(TENANT)
+    adapter = PlaystorePullAdapter(TENANT, TEST_APP_ID)
     since = datetime.utcnow() - timedelta(days=1)
     until = datetime.utcnow()
 
@@ -57,16 +56,16 @@ async def test_fetch_success(mock_playstore_response, monkeypatch):
     reviews = mock_playstore_response["reviews"]
     assert len(feedbacks) == len(reviews)
 
-    first = reviews[0]
     fb0 = feedbacks[0]
+    first = reviews[0]
     assert fb0.external_id == first["reviewId"]
     assert fb0.metadata_["authorName"] == first["authorName"]
     assert fb0.tenant_id == TENANT
+    assert fb0.source_instance == TEST_APP_ID
 
 
 @pytest.mark.asyncio
 async def test_fetch_failure(monkeypatch):
-    """On HTTP 404/401, emits a single stub Feedback."""
     async def mock_get(self, url, params=None, headers=None):
         class MockResponse:
             def __init__(self):
@@ -82,7 +81,7 @@ async def test_fetch_failure(monkeypatch):
 
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
-    adapter = PlaystorePullAdapter(TENANT)
+    adapter = PlaystorePullAdapter(TENANT, TEST_APP_ID)
     since = datetime.utcnow() - timedelta(days=1)
     until = datetime.utcnow()
 
@@ -92,11 +91,11 @@ async def test_fetch_failure(monkeypatch):
     assert fb.external_id == "stub-1"
     assert "stub review" in fb.body.lower()
     assert fb.tenant_id == TENANT
+    assert fb.source_instance == TEST_APP_ID
 
 
 @pytest.mark.asyncio
 async def test_fetch_empty_response(monkeypatch):
-    """An empty reviews list yields no Feedback."""
     async def mock_get(self, url, params=None, headers=None):
         class MockResponse:
             def __init__(self):
@@ -112,7 +111,7 @@ async def test_fetch_empty_response(monkeypatch):
 
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
-    adapter = PlaystorePullAdapter(TENANT)
+    adapter = PlaystorePullAdapter(TENANT, TEST_APP_ID)
     since = datetime.utcnow() - timedelta(days=1)
     until = datetime.utcnow()
 

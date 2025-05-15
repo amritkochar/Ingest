@@ -1,3 +1,4 @@
+# src/adapters/twitter.py
 import logging
 import uuid
 from datetime import datetime
@@ -23,16 +24,25 @@ class TwitterPullAdapter(BaseFetcher):
 
     def __init__(self, tenant_id: str):
         self.tenant_id = tenant_id
-        token_entry = settings.TWITTER_BEARER_TOKENS.get(tenant_id)
-        query = settings.TWITTER_QUERIES.get(tenant_id)
+        cfg = settings.PLATFORM_CONFIG.get("twitter", {})
+        tokens = cfg.get("tokens", {})
+        queries = cfg.get("queries", {})
+
+        token_entry = tokens.get(tenant_id)
+        query = queries.get(tenant_id)
         if not token_entry:
-            raise AdapterError(f"TWITTER_BEARER_TOKEN for tenant '{tenant_id}' is not set")
+            raise AdapterError(
+                f"TWITTER_BEARER_TOKEN for tenant '{tenant_id}' is not set"
+            )
         if not query:
-            raise AdapterError(f"TWITTER_SEARCH_QUERY for tenant '{tenant_id}' is not set")
+            raise AdapterError(
+                f"TWITTER_SEARCH_QUERY for tenant '{tenant_id}' is not set"
+            )
 
         self.token = token_entry.get_secret_value()
         self.query = query
         self.page_size = settings.PAGE_SIZE
+
         self.client = httpx.AsyncClient(base_url=self.BASE_URL, timeout=10)
         self.headers = {"Authorization": f"Bearer {self.token}"}
 
@@ -49,10 +59,10 @@ class TwitterPullAdapter(BaseFetcher):
             resp = await self.client.get(url, params=params, headers=self.headers)
             resp.raise_for_status()
         except HTTPStatusError as e:
-            code = e.response.status_code if e.response else None
+            code = getattr(e.response, "status_code", None)
             if code in (401, 429):
                 logger.warning(
-                    f"Twitter fetch error {code} for tenant '{self.tenant_id}'; emitting stub tweet"
+                    f"[{self.tenant_id}] Twitter fetch error {code}; emitting stub tweet"
                 )
                 yield Feedback(
                     id=uuid.uuid4(),
@@ -72,7 +82,6 @@ class TwitterPullAdapter(BaseFetcher):
         for item in data.get("data", []):
             ext_id = item.get("id")
             text = item.get("text")
-            # strip trailing 'Z' for fromisoformat
             ts = item.get("created_at", "").rstrip("Z")
             try:
                 created_at = datetime.fromisoformat(ts)

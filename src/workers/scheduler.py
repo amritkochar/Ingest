@@ -1,13 +1,15 @@
 # src/workers/scheduler.py
 from datetime import datetime, timedelta
+
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from config.settings import settings
-from services.ingest import ingest
-from adapters.playstore import PlaystorePullAdapter
-from adapters.twitter import TwitterPullAdapter
 from adapters.discourse import DiscoursePullAdapter
 from adapters.intercom import IntercomPullAdapter
+from adapters.playstore import PlaystorePullAdapter
+from adapters.twitter import TwitterPullAdapter
+from config.settings import settings
+from services.ingest import ingest
+
 
 async def dispatch_all():
     """
@@ -48,6 +50,7 @@ async def dispatch_all():
         adapter = IntercomPullAdapter(tenant)
         async for fb in adapter.fetch(ic_since, now):
             await ingest(fb)
+
 
 def schedule_jobs():
     """

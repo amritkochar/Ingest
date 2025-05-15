@@ -1,3 +1,4 @@
+# tests/adapters/test_discourse.py
 import json
 import os
 from datetime import datetime, timedelta
@@ -14,10 +15,14 @@ TENANT = "tenant1"
 @pytest.fixture(autouse=True)
 def ensure_base_url(monkeypatch):
     """
-    Make sure settings.DISCOURSE_BASE_URLS contains our test tenant.
+    Make sure settings.PLATFORM_CONFIG["discourse"]["base_urls"]
+    contains our test tenant.
     """
+    # inject a dummy Discourse URL for this tenant
     monkeypatch.setitem(
-        settings.DISCOURSE_BASE_URLS, TENANT, "https://discourse.example.com"
+        settings.PLATFORM_CONFIG["discourse"]["base_urls"],
+        TENANT,
+        "https://discourse.example.com",
     )
 
 

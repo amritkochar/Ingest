@@ -1,5 +1,4 @@
 # tests/adapters/test_intercom.py
-
 import json
 import os
 from datetime import datetime, timedelta
@@ -17,15 +16,20 @@ TENANT = "tenant1"
 @pytest.fixture(autouse=True)
 def ensure_intercom_secret(monkeypatch):
     """
-    Guarantee that settings.INTERCOM_SECRETS has an entry for TENANT.
+    Guarantee that settings.PLATFORM_CONFIG["intercom"]["secrets"]
+    has an entry for TENANT.
     """
-    monkeypatch.setitem(settings.INTERCOM_SECRETS, TENANT, SecretStr("test_secret"))
+    monkeypatch.setitem(
+        settings.PLATFORM_CONFIG["intercom"]["secrets"],
+        TENANT,
+        SecretStr("test_secret"),
+    )
 
 
 @pytest.fixture
 def mock_intercom_response():
     path = os.path.join(os.path.dirname(__file__), "mock_intercom_response.json")
-    with open(path, "r") as f:
+    with open(path) as f:
         return json.load(f)
 
 
@@ -47,7 +51,6 @@ async def test_fetch_success(mock_intercom_response, monkeypatch):
 
         return MockResponse(mock_intercom_response)
 
-    # Patch AsyncClient.get
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
     adapter = IntercomPullAdapter(TENANT)
@@ -61,6 +64,7 @@ async def test_fetch_success(mock_intercom_response, monkeypatch):
     fb0 = feedbacks[0]
     assert fb0.external_id == first["id"]
     assert fb0.body == first["conversation_message"]["body"]
+    # deep check one metadata field
     assert fb0.metadata_["user"]["name"] == first["user"]["name"]
     assert fb0.tenant_id == TENANT
 

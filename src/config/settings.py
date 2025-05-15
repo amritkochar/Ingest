@@ -1,9 +1,9 @@
 # src/config/settings.py
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from pydantic import AnyHttpUrl, BaseSettings, Field, PostgresDsn, SecretStr
+from pydantic import BaseSettings, Field, PostgresDsn, SecretStr
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # ── Tenants ───────────────────────────────────────────────────────
     TENANTS: List[str] = Field(
         default_factory=lambda: ["tenant1", "tenant2", "tenant3", "tenant4", "tenant5"],
-        description="List of tenant IDs"
+        description="List of tenant IDs",
     )
 
     # ── Multi-tenant, multi-instance service configs ─────────────────

@@ -18,14 +18,16 @@ class IntercomPushHandler(BasePushHandler):
 
     def __init__(self, tenant_id: str):
         self.tenant_id = tenant_id
-        secret_entry = settings.INTERCOM_SECRETS.get(tenant_id)
+        platform_cfg = settings.PLATFORM_CONFIG.get("intercom", {})
+        secrets = platform_cfg.get("secrets", {})
+        secret_entry = secrets.get(tenant_id)
         if not secret_entry:
-            raise AdapterError(f"INTERCOM_SECRET for tenant '{tenant_id}' is not set")
+            raise AdapterError(f"INTERCOM secret for tenant '{tenant_id}' is not set")
         self.secret = secret_entry.get_secret_value()
         self.signature_header = "X-Intercom-Signature"
 
     async def handle(self, payload: Dict) -> Feedback:
-        # TODO: validate HMAC signature from headers if needed, using self.secret
+        # TODO: validate HMAC signature using self.secret if needed
         conv = payload.get("data", {}).get("item", {})
         ext_id = conv.get("id") or str(uuid.uuid4())
         created_ts = conv.get("created_at", datetime.utcnow().timestamp())
@@ -44,5 +46,7 @@ class IntercomPushHandler(BasePushHandler):
             body=body,
             metadata_={"raw": payload},
         )
-        logger.info(f"Intercom webhook for tenant '{self.tenant_id}' → Feedback {ext_id}")
+        logger.info(
+            f"Intercom webhook for tenant '{self.tenant_id}' → Feedback {ext_id}"
+        )
         return fb

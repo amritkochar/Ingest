@@ -1,10 +1,10 @@
+# src/adapters/intercom.py
 import logging
 import uuid
 from datetime import datetime
 from typing import AsyncIterator
 
 import httpx
-from httpx import HTTPStatusError
 
 from config.settings import settings
 from core.exceptions import AdapterError
@@ -21,9 +21,11 @@ class IntercomPullAdapter(BaseFetcher):
 
     def __init__(self, tenant_id: str):
         self.tenant_id = tenant_id
-        secret_entry = settings.INTERCOM_SECRETS.get(tenant_id)
+        cfg = settings.PLATFORM_CONFIG.get("intercom", {})
+        secrets = cfg.get("secrets", {})
+        secret_entry = secrets.get(tenant_id)
         if not secret_entry:
-            raise AdapterError(f"INTERCOM_SECRET for tenant '{tenant_id}' is not set")
+            raise AdapterError(f"INTERCOM secret for tenant '{tenant_id}' is not set")
         token = secret_entry.get_secret_value()
         self.client = httpx.AsyncClient(base_url=self.BASE_URL, timeout=10)
         self.headers = {
@@ -43,9 +45,9 @@ class IntercomPullAdapter(BaseFetcher):
             resp = await self.client.get(url, params=params, headers=self.headers)
             resp.raise_for_status()
         except Exception as e:
-            # catch HTTPStatusError, ConnectError, etc.
             logger.warning(
-                f"Intercom fetch error ({type(e).__name__}): {e}; emitting stub conversation for {self.tenant_id}"
+                f"Intercom fetch error ({type(e).__name__}): {e}; "
+                f"emitting stub conversation for tenant '{self.tenant_id}'"
             )
             yield Feedback(
                 id=uuid.uuid4(),
@@ -67,8 +69,7 @@ class IntercomPullAdapter(BaseFetcher):
             created_at = datetime.fromtimestamp(
                 item.get("created_at", since.timestamp())
             )
-            body = item.get("conversation_message", {}).get("body")
-            # copy all other top-level keys into metadata_
+            body = item.get("conversation_message", {}).get("body", "")
             meta = {
                 k: v
                 for k, v in item.items()

@@ -1,11 +1,14 @@
 # src/services/ingest.py
 import logging
+
 from sqlalchemy.exc import IntegrityError
+
+from core.models import Feedback
 from db.models import FeedbackORM
 from db.session import AsyncSessionLocal
-from core.models import Feedback
 
 logger = logging.getLogger(__name__)
+
 
 async def ingest(feedback: Feedback) -> bool:
     """
