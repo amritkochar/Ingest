@@ -1,3 +1,5 @@
+# tests/adapters/test_intercom.py
+
 import json
 import os
 from datetime import datetime, timedelta
@@ -9,14 +11,15 @@ from pydantic import SecretStr
 from adapters.intercom import IntercomPullAdapter
 from config.settings import settings
 
+TENANT = "tenant1"
+
 
 @pytest.fixture(autouse=True)
 def ensure_intercom_secret(monkeypatch):
     """
-    Ensure settings.INTERCOM_SECRET is populated so the adapter __init__ won't fail.
+    Guarantee that settings.INTERCOM_SECRETS has an entry for TENANT.
     """
-    # Inject a dummy SecretStr regardless of .env
-    monkeypatch.setattr(settings, "INTERCOM_SECRET", SecretStr("test_secret"))
+    monkeypatch.setitem(settings.INTERCOM_SECRETS, TENANT, SecretStr("test_secret"))
 
 
 @pytest.fixture
@@ -28,7 +31,7 @@ def mock_intercom_response():
 
 @pytest.mark.asyncio
 async def test_fetch_success(mock_intercom_response, monkeypatch):
-    """Should yield one Feedback per conversation in the JSON."""
+    """Should yield one Feedback per conversation, tagged with the correct tenant."""
 
     async def mock_get(self, url, params=None, headers=None):
         class MockResponse:
@@ -44,10 +47,10 @@ async def test_fetch_success(mock_intercom_response, monkeypatch):
 
         return MockResponse(mock_intercom_response)
 
-    # Patch httpx.AsyncClient.get
+    # Patch AsyncClient.get
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
-    adapter = IntercomPullAdapter()
+    adapter = IntercomPullAdapter(TENANT)
     since = datetime.utcnow() - timedelta(days=1)
     until = datetime.utcnow()
 
@@ -55,14 +58,16 @@ async def test_fetch_success(mock_intercom_response, monkeypatch):
     assert len(feedbacks) == len(mock_intercom_response["conversations"])
 
     first = mock_intercom_response["conversations"][0]
-    assert feedbacks[0].external_id == first["id"]
-    assert feedbacks[0].body == first["conversation_message"]["body"]
-    assert feedbacks[0].metadata_["user"]["name"] == first["user"]["name"]
+    fb0 = feedbacks[0]
+    assert fb0.external_id == first["id"]
+    assert fb0.body == first["conversation_message"]["body"]
+    assert fb0.metadata_["user"]["name"] == first["user"]["name"]
+    assert fb0.tenant_id == TENANT
 
 
 @pytest.mark.asyncio
 async def test_fetch_404_fallback(monkeypatch):
-    """Should emit a single stub Feedback on HTTP 404."""
+    """Should emit a single stub Feedback tagged with the tenant on any error."""
 
     async def mock_get(self, url, params=None, headers=None):
         class MockResponse:
@@ -77,15 +82,16 @@ async def test_fetch_404_fallback(monkeypatch):
 
         return MockResponse()
 
-    # Patch httpx.AsyncClient.get
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
-    adapter = IntercomPullAdapter()
+    adapter = IntercomPullAdapter(TENANT)
     since = datetime.utcnow() - timedelta(days=1)
     until = datetime.utcnow()
 
     feedbacks = [fb async for fb in adapter.fetch(since, until)]
     assert len(feedbacks) == 1
+
     fb = feedbacks[0]
     assert fb.external_id == "stub-intercom"
     assert "stub conversation" in fb.body.lower()
+    assert fb.tenant_id == TENANT
