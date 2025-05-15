@@ -1,0 +1,17 @@
+{
+    "topics": [
+      {
+        "id": 101,
+        "title": "First feedback topic",
+        "created_at": 1683700000,
+        "posts_count": 3
+      },
+      {
+        "id": 102,
+        "title": "Second feedback topic",
+        "created_at": 1683703600,
+        "posts_count": 5
+      }
+    ]
+  }
+  
