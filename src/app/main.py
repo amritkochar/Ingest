@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Header, HTTPException, Request
-from ports.push_handler import BasePushHandler
+
 from adapters.intercom_push import IntercomPushHandler
+from ports.push_handler import BasePushHandler
 from services.ingest import ingest
 
 app = FastAPI()
+
+
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
@@ -27,7 +30,7 @@ async def intercom_webhook(
     try:
         fb = await handler.handle(payload)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     inserted = await ingest(fb)
     return {"status": "ok", "inserted": inserted}

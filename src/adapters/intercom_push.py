@@ -1,14 +1,15 @@
-from datetime import datetime
-import uuid
 import logging
+import uuid
+from datetime import datetime
 from typing import Dict
 
-from core.models import Feedback
-from core.exceptions import AdapterError
-from ports.push_handler import BasePushHandler
 from config.settings import settings
+from core.exceptions import AdapterError
+from core.models import Feedback
+from ports.push_handler import BasePushHandler
 
 logger = logging.getLogger(__name__)
+
 
 class IntercomPushHandler(BasePushHandler):
     """
@@ -17,7 +18,11 @@ class IntercomPushHandler(BasePushHandler):
     """
 
     def __init__(self):
-        secret = settings.INTERCOM_SECRET.get_secret_value() if settings.INTERCOM_SECRET else ""
+        secret = (
+            settings.INTERCOM_SECRET.get_secret_value()
+            if settings.INTERCOM_SECRET
+            else ""
+        )
         if not secret:
             raise AdapterError("INTERCOM_SECRET is not set")
         self.signature_header = "X-Intercom-Signature"
@@ -26,7 +31,9 @@ class IntercomPushHandler(BasePushHandler):
         # TODO: validate HMAC signature from headers if needed
         conv = payload.get("data", {}).get("item", {})
         ext_id = conv.get("id") or str(uuid.uuid4())
-        created = datetime.fromtimestamp(conv.get("created_at", datetime.utcnow().timestamp()))
+        created = datetime.fromtimestamp(
+            conv.get("created_at", datetime.utcnow().timestamp())
+        )
         body = conv.get("conversation_message", {}).get("body", "")
 
         fb = Feedback(

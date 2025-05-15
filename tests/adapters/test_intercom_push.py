@@ -1,7 +1,8 @@
 # tests/adapters/test_intercom_push.py
 
-import os
 import json
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
@@ -9,18 +10,22 @@ from pydantic import SecretStr
 import app.main as app_module
 from config.settings import settings
 
+
 # 1. Ensure the app imports the dummy secret
 @pytest.fixture(autouse=True)
 def set_dummy_secret(monkeypatch):
     monkeypatch.setattr(settings, "INTERCOM_SECRET", SecretStr("dummy"))
 
+
 # 2. TestClient against your FastAPI app
 client = TestClient(app_module.app)
+
 
 def load_payload():
     path = os.path.join(os.path.dirname(__file__), "mock_intercom_push.json")
     with open(path) as f:
         return json.load(f)
+
 
 def test_intercom_push_endpoint(monkeypatch):
     payload = load_payload()

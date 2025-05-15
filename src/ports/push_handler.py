@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Dict
+
 from core.models import Feedback
+
 
 class BasePushHandler(ABC):
     @abstractmethod

@@ -1,17 +1,19 @@
-from sqlalchemy import (
-    Column, String, DateTime, JSON, UniqueConstraint
-)
+from sqlalchemy import JSON, Column, DateTime, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
+
 class FeedbackORM(Base):
     __tablename__ = "feedback"
     __table_args__ = (
         UniqueConstraint(
-            "tenant_id", "source_type", "external_id", "source_instance",
-            name="uq_feedback_tenant_source_external"
+            "tenant_id",
+            "source_type",
+            "external_id",
+            "source_instance",
+            name="uq_feedback_tenant_source_external",
         ),
     )
 

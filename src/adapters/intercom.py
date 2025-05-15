@@ -1,17 +1,18 @@
+import logging
+import uuid
 from datetime import datetime
 from typing import AsyncIterator
-import uuid
-import logging
 
 import httpx
 from httpx import HTTPStatusError
 
-from core.models import Feedback
-from core.exceptions import AdapterError
-from ports.fetcher import BaseFetcher
 from config.settings import settings
+from core.exceptions import AdapterError
+from core.models import Feedback
+from ports.fetcher import BaseFetcher
 
 logger = logging.getLogger(__name__)
+
 
 class IntercomPullAdapter(BaseFetcher):
     """Fetch conversations from Intercom via their API."""
@@ -19,7 +20,11 @@ class IntercomPullAdapter(BaseFetcher):
     BASE_URL = "https://api.intercom.io"
 
     def __init__(self):
-        token = settings.INTERCOM_SECRET.get_secret_value() if settings.INTERCOM_SECRET else ""
+        token = (
+            settings.INTERCOM_SECRET.get_secret_value()
+            if settings.INTERCOM_SECRET
+            else ""
+        )
         if not token:
             raise AdapterError("INTERCOM_SECRET is not set")
         self.client = httpx.AsyncClient(base_url=self.BASE_URL, timeout=10)
@@ -29,9 +34,7 @@ class IntercomPullAdapter(BaseFetcher):
         }
         self.page_size = settings.PAGE_SIZE
 
-    async def fetch(
-        self, since: datetime, until: datetime
-    ) -> AsyncIterator[Feedback]:
+    async def fetch(self, since: datetime, until: datetime) -> AsyncIterator[Feedback]:
         url = "/conversations"
         params = {
             "updated_since": int(since.timestamp()),
@@ -62,7 +65,9 @@ class IntercomPullAdapter(BaseFetcher):
         data = resp.json()
         for item in data.get("conversations", []):
             ext_id = item.get("id")
-            created_at = datetime.fromtimestamp(item.get("created_at", since.timestamp()))
+            created_at = datetime.fromtimestamp(
+                item.get("created_at", since.timestamp())
+            )
             body = item.get("conversation_message", {}).get("body")
             fb = Feedback(
                 id=uuid.uuid5(uuid.NAMESPACE_URL, ext_id),
@@ -74,8 +79,11 @@ class IntercomPullAdapter(BaseFetcher):
                 fetched_at=datetime.utcnow(),
                 lang=item.get("language"),
                 body=body,
-                metadata_={k: v for k, v in item.items()
-                           if k not in ("id", "created_at", "conversation_message")},
+                metadata_={
+                    k: v
+                    for k, v in item.items()
+                    if k not in ("id", "created_at", "conversation_message")
+                },
             )
             yield fb
 

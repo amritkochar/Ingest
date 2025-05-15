@@ -8,7 +8,8 @@ run:
 
 check: lint test typecheck
 
-check-fix: format lint
+check-fix:
+	poetry run ruff check . --fix
 
 lint:
 	poetry run ruff check .

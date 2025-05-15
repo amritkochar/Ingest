@@ -1,12 +1,14 @@
 # tests/services/test_ingest.py
-import pytest
 import uuid
 from datetime import datetime
 
+import pytest
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
 from core.models import Feedback
-from services.ingest import ingest
 from db.models import Base
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from services.ingest import ingest
+
 
 @pytest.fixture
 async def sqlite_session():
@@ -18,16 +20,23 @@ async def sqlite_session():
     yield session_factory
     await engine.dispose()
 
+
 @pytest.mark.asyncio
 async def test_ingest_insert_and_duplicate(monkeypatch, sqlite_session):
     # override AsyncSessionLocal
     monkeypatch.setattr("services.ingest.AsyncSessionLocal", sqlite_session)
-    
+
     fb = Feedback(
-        id=uuid.uuid4(), external_id="e1", source_type="playstore",
-        source_instance="app1", tenant_id="t1",
-        created_at=datetime.utcnow(), fetched_at=datetime.utcnow(),
-        lang="en", body="hi", metadata_={}
+        id=uuid.uuid4(),
+        external_id="e1",
+        source_type="playstore",
+        source_instance="app1",
+        tenant_id="t1",
+        created_at=datetime.utcnow(),
+        fetched_at=datetime.utcnow(),
+        lang="en",
+        body="hi",
+        metadata_={},
     )
 
     # first insert

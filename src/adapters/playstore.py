@@ -1,17 +1,18 @@
+import logging
+import uuid
 from datetime import datetime
 from typing import AsyncIterator
-import uuid
-import logging
 
 import httpx
 from httpx import HTTPStatusError
 
-from core.models import Feedback
-from core.exceptions import AdapterError
-from ports.fetcher import BaseFetcher
 from config.settings import settings
+from core.exceptions import AdapterError
+from core.models import Feedback
+from ports.fetcher import BaseFetcher
 
 logger = logging.getLogger(__name__)
+
 
 class PlaystorePullAdapter(BaseFetcher):
     def __init__(self):
@@ -20,13 +21,8 @@ class PlaystorePullAdapter(BaseFetcher):
         self.page_size = settings.PAGE_SIZE
         self.client = httpx.AsyncClient(timeout=10)
 
-    async def fetch(
-        self, since: datetime, until: datetime
-    ) -> AsyncIterator[Feedback]:
-        url = (
-            f"https://playstore.googleapis.com/v1/applications/"
-            f"{self.app_id}/reviews"
-        )
+    async def fetch(self, since: datetime, until: datetime) -> AsyncIterator[Feedback]:
+        url = f"https://playstore.googleapis.com/v1/applications/{self.app_id}/reviews"
         params = {
             "startTime": since.isoformat(),
             "endTime": until.isoformat(),
@@ -39,7 +35,9 @@ class PlaystorePullAdapter(BaseFetcher):
             resp.raise_for_status()
         except HTTPStatusError as e:
             if e.response.status_code == 404:
-                logger.warning(f"Play Store API 404 for app {self.app_id}, emitting stub review")
+                logger.warning(
+                    f"Play Store API 404 for app {self.app_id}, emitting stub review"
+                )
                 yield Feedback(
                     id=uuid.uuid4(),
                     external_id="stub-1",
@@ -72,8 +70,11 @@ class PlaystorePullAdapter(BaseFetcher):
                 fetched_at=datetime.utcnow(),
                 lang=item.get("languageCode"),
                 body=item.get("comment"),
-                metadata_={k: v for k, v in item.items()
-                           if k not in ("reviewId", "createTime", "comment")},
+                metadata_={
+                    k: v
+                    for k, v in item.items()
+                    if k not in ("reviewId", "createTime", "comment")
+                },
             )
             yield fb
 
