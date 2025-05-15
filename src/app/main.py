@@ -38,12 +38,6 @@ async def healthz():
     return {"status": "ok"}
 
 
-# ── Startup: launch scheduler ────────────────────────────────────────
-@app.on_event("startup")
-async def startup_event():
-    schedule_jobs()
-
-
 # ── Webhook endpoint (Intercom push) ────────────────────────────────
 @app.post("/webhook/intercom/{tenant_id}")
 async def intercom_webhook(tenant_id: str, request: Request):
