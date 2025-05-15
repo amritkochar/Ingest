@@ -107,6 +107,8 @@ source .venv/bin/activate
 # verify
 which python   # .venv/bin/python
 python --version  # 3.11.x
+export PYTHONPATH=src # without this it might lead to errors
+
 ```
 
 ### 2. Start Database
