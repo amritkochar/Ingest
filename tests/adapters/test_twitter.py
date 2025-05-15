@@ -1,17 +1,22 @@
-# tests/adapters/test_twitter.py
-
 import os
-# ─── Set env vars BEFORE importing settings or adapter ─────────────
-os.environ.setdefault("TWITTER_SEARCH_QUERY", "#feedback lang:en")
-os.environ.setdefault("TWITTER_BEARER_TOKEN", "dummy_token")
-
 import json
 import pytest
 import httpx
 from datetime import datetime, timedelta
+from pydantic import SecretStr
 
 from adapters.twitter import TwitterPullAdapter
 from core.models import Feedback
+from config.settings import settings
+
+@pytest.fixture(autouse=True)
+def ensure_twitter_settings(monkeypatch):
+    """
+    Ensure settings.TWITTER_BEARER_TOKEN and TWITTER_SEARCH_QUERY
+    are populated so the adapter __init__ won't fail.
+    """
+    monkeypatch.setattr(settings, "TWITTER_BEARER_TOKEN", SecretStr("dummy_token"))
+    monkeypatch.setattr(settings, "TWITTER_SEARCH_QUERY", "#feedback lang:en")
 
 @pytest.fixture
 def mock_twitter_response():

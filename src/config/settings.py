@@ -34,7 +34,7 @@ class Settings(BaseSettings):
         description="Base URL for Discourse API"
     )
     TWITTER_SEARCH_QUERY: str = Field(
-        ..., env="TWITTER_SEARCH_QUERY",
+        "", env="TWITTER_SEARCH_QUERY",
         description="Twitter Recent Search query (e.g. '#feedback lang:en')"
     )
     TWITTER_BEARER_TOKEN: Optional[SecretStr] = Field(
