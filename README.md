@@ -9,6 +9,41 @@ This service ingests "feedback" data from multiple external platforms (Google Pl
 - Scheduler via APScheduler for periodic pulls
 - 12-factor configuration with Pydantic BaseSettings
 
+> **Points to Note**:  
+> - The current implementation uses stubbed data and is not connected to real-world sources with valid tokens or credentials.  
+> - Integration with actual platform APIs will require updating the configuration with correct app IDs, API keys, and secrets.
+> - Multi-tenancy is currently managed through `settings.py`, which is static.
+> - Error handling is deliberately minimal for clarity.
+> - Rate limiting, pagination handling, and backoff strategies are not yet implemented in the pull adapters.
+> - The ingestion logic assumes a single unique constraint on `(tenant_id, source_type, external_id, source_instance)`.
+> - Webhook validation (e.g., HMAC signatures for Intercom) is stubbed and should be implemented before going live.
+> - All timestamps use naive `datetime.utcnow()` rather than timezone-aware alternatives.
+> - APScheduler is run in-process and not persisted; scheduled jobs are not restored on container restarts or crashes.
+
+
+## Improvements & Future Work
+
+- Integrate with real-world credentials for each platform source, right now we have stubbed data.
+- Move sensitive data (e.g., API keys, tokens) to `.env` files for better security and separation of concerns.
+- Improve security by implementing a lightweight authentication layer, such as JWT-based login, to prevent unauthorized cross-tenant data access.
+- Introduce Role-Based Access Control (RBAC) to manage permissions and ensure fine-grained access control.
+- Create a lightweight UI to visualize and interact with ingested feedback data.
+- Use Tenacity to add retry mechanism properly.
+- Switch to Celery (or RQ) for more robust, distributed scheduling & retries.
+- Persist tenant & platform config in a database table rather than in settings, with runtime reloading capability.
+- Modularize adapters further—e.g., shared HTTP client, retry/backoff policies.
+- Add structured logging (JSON) and centralized log aggregation.
+- GraphQL or gRPC API for richer queries & subscriptions.
+- Better error handling and metrics (Prometheus, healthchecks), including retries, circuit breakers, and alerting.
+- Support dynamic tenant onboarding via an admin UI.
+- Add end-to-end performance/load testing.
+- Implement proper rate limiting, pagination handling, and backoff strategies in the pull adapters.
+- Refine unique constraints if upstream platforms evolve (e.g., nested threads or duplicate IDs).
+- Move to a distributed approach for large-scale deployments rather than using a centralized scheduler.
+- Implement proper webhook validation (e.g., HMAC signatures for Intercom).
+- Use timezone-aware timestamps (`datetime.now(timezone.utc)`) to avoid subtle bugs in time filtering.
+
+
 ## Repository Structure
 
 ```
@@ -106,8 +141,8 @@ poetry run uvicorn src.app.main:app --reload
 ```bash
 # Intercom webhook push
 curl -X POST http://localhost:8000/webhook/intercom/tenant1 \
-  -H "Content-Type: application/json" \
-  -d @tests/adapters/mock_intercom_push.json
+    -H "Content-Type: application/json" \
+    -d @tests/adapters/mock_intercom_push.json
 
 # List feedback
 curl "http://localhost:8000/feedback?tenant_id=tenant1&source_type=playstore"
@@ -130,14 +165,3 @@ All settings live in `src/config/settings.py` (and `.env`). Key sections:
 - `PLATFORM_CONFIG`: per-tenant app IDs, API keys, base URLs, tokens, secrets
 - `POLL_INTERVALS`: frequency per platform
 - `DISPATCH_INTERVAL_SEC`: how often to run the full dispatch job
-
-## Improvements & Future Work
-
-- Switch to Celery (or RQ) for more robust, distributed scheduling & retries
-- Persist tenant & platform config in a database table rather than in settings
-- Modularize adapters further—e.g. shared HTTP client, retry/backoff policies
-- Add structured logging (JSON) and centralized log aggregation
-- GraphQL or gRPC API for richer queries & subscriptions
-- Better error handling and metrics (Prometheus, healthchecks)
-- Support dynamic tenant onboarding via an admin UI
-- Add end-to-end performance/load testing
