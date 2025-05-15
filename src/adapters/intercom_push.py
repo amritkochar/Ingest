@@ -7,7 +7,7 @@ from config.settings import settings
 from core.exceptions import AdapterError
 from core.models import Feedback
 from ports.push_handler import BasePushHandler
-
+from utils.time_utils import utc_now
 logger = logging.getLogger(__name__)
 
 
@@ -30,7 +30,7 @@ class IntercomPushHandler(BasePushHandler):
         # TODO: validate HMAC signature using self.secret if needed
         conv = payload.get("data", {}).get("item", {})
         ext_id = conv.get("id") or str(uuid.uuid4())
-        created_ts = conv.get("created_at", datetime.utcnow().timestamp())
+        created_ts = conv.get("created_at", utc_now().timestamp())
         created = datetime.fromtimestamp(created_ts)
         body = conv.get("conversation_message", {}).get("body", "")
 
@@ -41,7 +41,7 @@ class IntercomPushHandler(BasePushHandler):
             source_instance="push",
             tenant_id=self.tenant_id,
             created_at=created,
-            fetched_at=datetime.utcnow(),
+            fetched_at=utc_now(),
             lang=conv.get("language"),
             body=body,
             metadata_={"raw": payload},

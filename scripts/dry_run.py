@@ -8,10 +8,10 @@ from datetime import datetime, timedelta
 from config.settings import settings
 from core.models import Feedback
 from services.ingest import ingest
-
+from utils.time_utils import utc_now
 
 async def main() -> None:
-    now = datetime.utcnow()
+    now = utc_now()
     platforms = list(settings.PLATFORM_CONFIG.keys())
 
     for i in range(200):

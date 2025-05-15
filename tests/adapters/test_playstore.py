@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 import httpx
 import pytest
-
+from utils.time_utils import utc_now
 from adapters.playstore import PlaystorePullAdapter
 from config.settings import settings
 
@@ -49,8 +49,8 @@ async def test_fetch_success(mock_playstore_response, monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
     adapter = PlaystorePullAdapter(TENANT, TEST_APP_ID)
-    since = datetime.utcnow() - timedelta(days=1)
-    until = datetime.utcnow()
+    since = utc_now() - timedelta(days=1)
+    until = utc_now()
 
     feedbacks = [fb async for fb in adapter.fetch(since, until)]
     reviews = mock_playstore_response["reviews"]
@@ -82,8 +82,8 @@ async def test_fetch_failure(monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
     adapter = PlaystorePullAdapter(TENANT, TEST_APP_ID)
-    since = datetime.utcnow() - timedelta(days=1)
-    until = datetime.utcnow()
+    since = utc_now() - timedelta(days=1)
+    until = utc_now()
 
     feedbacks = [fb async for fb in adapter.fetch(since, until)]
     assert len(feedbacks) == 1
@@ -112,8 +112,8 @@ async def test_fetch_empty_response(monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
     adapter = PlaystorePullAdapter(TENANT, TEST_APP_ID)
-    since = datetime.utcnow() - timedelta(days=1)
-    until = datetime.utcnow()
+    since = utc_now() - timedelta(days=1)
+    until = utc_now()
 
     feedbacks = [fb async for fb in adapter.fetch(since, until)]
     assert feedbacks == []

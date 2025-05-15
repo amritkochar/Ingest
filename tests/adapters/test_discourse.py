@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 import httpx
 import pytest
-
+from utils.time_utils import utc_now
 from adapters.discourse import DiscoursePullAdapter
 from config.settings import settings
 
@@ -54,8 +54,8 @@ async def test_fetch_success(mock_discourse_response, monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
     adapter = DiscoursePullAdapter(TENANT)
-    since = datetime.utcnow() - timedelta(days=1)
-    until = datetime.utcnow()
+    since = utc_now() - timedelta(days=1)
+    until = utc_now()
 
     feedbacks = [fb async for fb in adapter.fetch(since, until)]
     assert len(feedbacks) == len(mock_discourse_response["topics"])
@@ -88,8 +88,8 @@ async def test_fetch_404_fallback(monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
     adapter = DiscoursePullAdapter(TENANT)
-    since = datetime.utcnow() - timedelta(days=1)
-    until = datetime.utcnow()
+    since = utc_now() - timedelta(days=1)
+    until = utc_now()
 
     feedbacks = [fb async for fb in adapter.fetch(since, until)]
     assert len(feedbacks) == 1

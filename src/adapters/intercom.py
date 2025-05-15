@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import AsyncIterator
 
 import httpx
-
+from utils.time_utils import utc_now
 from config.settings import settings
 from core.exceptions import AdapterError
 from core.models import Feedback
@@ -55,8 +55,8 @@ class IntercomPullAdapter(BaseFetcher):
                 source_type="intercom",
                 source_instance="pull",
                 tenant_id=self.tenant_id,
-                created_at=datetime.utcnow(),
-                fetched_at=datetime.utcnow(),
+                created_at=utc_now(),
+                fetched_at=utc_now(),
                 lang=None,
                 body="This is a stub conversation (fetch failure fallback)",
                 metadata_={},
@@ -82,7 +82,7 @@ class IntercomPullAdapter(BaseFetcher):
                 source_instance="pull",
                 tenant_id=self.tenant_id,
                 created_at=created_at,
-                fetched_at=datetime.utcnow(),
+                fetched_at=utc_now(),
                 lang=item.get("language"),
                 body=body,
                 metadata_=meta,

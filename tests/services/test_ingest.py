@@ -6,7 +6,7 @@ from datetime import datetime
 import pytest
 from sqlalchemy.dialects.sqlite import JSON as SQLiteJSON
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
+from utils.time_utils import utc_now
 from core.models import Feedback
 from db.models import Base, FeedbackORM
 from services.ingest import ingest
@@ -42,8 +42,8 @@ async def test_ingest_insert_and_duplicate(monkeypatch, sqlite_session):
         source_type="playstore",
         source_instance="app1",
         tenant_id="t1",
-        created_at=datetime.utcnow(),
-        fetched_at=datetime.utcnow(),
+        created_at=utc_now(),
+        fetched_at=utc_now(),
         lang="en",
         body="hi",
         metadata_={},  # now maps to SQLite JSON

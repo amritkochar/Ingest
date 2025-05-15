@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import httpx
 import pytest
 from pydantic import SecretStr
-
+from utils.time_utils import utc_now
 from adapters.intercom import IntercomPullAdapter
 from config.settings import settings
 
@@ -54,8 +54,8 @@ async def test_fetch_success(mock_intercom_response, monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
     adapter = IntercomPullAdapter(TENANT)
-    since = datetime.utcnow() - timedelta(days=1)
-    until = datetime.utcnow()
+    since = utc_now() - timedelta(days=1)
+    until = utc_now()
 
     feedbacks = [fb async for fb in adapter.fetch(since, until)]
     assert len(feedbacks) == len(mock_intercom_response["conversations"])
@@ -89,8 +89,8 @@ async def test_fetch_404_fallback(monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
     adapter = IntercomPullAdapter(TENANT)
-    since = datetime.utcnow() - timedelta(days=1)
-    until = datetime.utcnow()
+    since = utc_now() - timedelta(days=1)
+    until = utc_now()
 
     feedbacks = [fb async for fb in adapter.fetch(since, until)]
     assert len(feedbacks) == 1

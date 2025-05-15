@@ -6,7 +6,7 @@ from typing import AsyncIterator
 
 import httpx
 from httpx import HTTPStatusError
-
+from utils.time_utils import utc_now
 from config.settings import settings
 from core.exceptions import AdapterError
 from core.models import Feedback
@@ -61,8 +61,8 @@ class PlaystorePullAdapter(BaseFetcher):
                     source_type="playstore",
                     source_instance=self.app_id,
                     tenant_id=self.tenant_id,
-                    created_at=datetime.utcnow(),
-                    fetched_at=datetime.utcnow(),
+                    created_at=utc_now(),
+                    fetched_at=utc_now(),
                     lang="en",
                     body="This is a stub review (404/401 fallback)",
                     metadata_={},
@@ -76,7 +76,7 @@ class PlaystorePullAdapter(BaseFetcher):
             try:
                 created_at = datetime.fromisoformat(item.get("createTime"))
             except Exception:
-                created_at = datetime.utcnow()
+                created_at = utc_now()
 
             yield Feedback(
                 id=uuid.uuid5(uuid.NAMESPACE_URL, ext_id),
@@ -85,7 +85,7 @@ class PlaystorePullAdapter(BaseFetcher):
                 source_instance=self.app_id,
                 tenant_id=self.tenant_id,
                 created_at=created_at,
-                fetched_at=datetime.utcnow(),
+                fetched_at=utc_now(),
                 lang=item.get("languageCode"),
                 body=item.get("comment"),
                 metadata_={

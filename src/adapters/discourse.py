@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import AsyncIterator
 
 import httpx
-
+from utils.time_utils import utc_now
 from config.settings import settings
 from core.models import Feedback
 from ports.fetcher import BaseFetcher
@@ -47,8 +47,8 @@ class DiscoursePullAdapter(BaseFetcher):
                 source_type="discourse",
                 source_instance=self.base_url,
                 tenant_id=self.tenant_id,
-                created_at=datetime.utcnow(),
-                fetched_at=datetime.utcnow(),
+                created_at=utc_now(),
+                fetched_at=utc_now(),
                 lang = None,
                 body="This is a stub topic (fetch failure fallback)",
                 metadata_={},
@@ -67,7 +67,7 @@ class DiscoursePullAdapter(BaseFetcher):
                 source_instance=self.base_url,
                 tenant_id=self.tenant_id,
                 created_at=created_at,
-                fetched_at=datetime.utcnow(),
+                fetched_at=utc_now(),
                 lang = None,
                 body=topic.get("title"),
                 metadata_={"posts_count": topic.get("posts_count")},

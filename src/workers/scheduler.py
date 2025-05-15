@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
+from utils.time_utils import utc_now
 from adapters.discourse import DiscoursePullAdapter
 from adapters.intercom import IntercomPullAdapter
 from adapters.playstore import PlaystorePullAdapter
@@ -16,7 +16,7 @@ async def dispatch_all() -> None:
     For each configured instance of each platform, pull new records and ingest them.
     Only tenants present in PLATFORM_CONFIG for that platform are iterated.
     """
-    now = datetime.utcnow()
+    now = utc_now()
 
     # ── Play Store ────────────────────────────────────────────────
     ps_cfg = settings.PLATFORM_CONFIG.get("playstore", {})

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import httpx
 import pytest
 from pydantic import SecretStr
-
+from utils.time_utils import utc_now
 from adapters.twitter import TwitterPullAdapter
 from config.settings import settings
 
@@ -51,8 +51,8 @@ async def test_fetch_success(mock_twitter_response, monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
     adapter = TwitterPullAdapter(TENANT)
-    since = datetime.utcnow() - timedelta(days=1)
-    until = datetime.utcnow()
+    since = utc_now() - timedelta(days=1)
+    until = utc_now()
 
     feedbacks = [fb async for fb in adapter.fetch(since, until)]
     expected = mock_twitter_response["data"]
@@ -85,8 +85,8 @@ async def test_rate_limit_fallback(monkeypatch):
     monkeypatch.setattr(httpx.AsyncClient, "get", mock_get)
 
     adapter = TwitterPullAdapter(TENANT)
-    since = datetime.utcnow() - timedelta(days=1)
-    until = datetime.utcnow()
+    since = utc_now() - timedelta(days=1)
+    until = utc_now()
 
     feedbacks = [fb async for fb in adapter.fetch(since, until)]
     assert len(feedbacks) == 1
