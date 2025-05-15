@@ -16,27 +16,25 @@ logger = logging.getLogger(__name__)
 
 class TwitterPullAdapter(BaseFetcher):
     """
-    Fetch recent tweets matching a query via Twitter API v2.
+    Fetch recent tweets matching a query via Twitter API v2 for a specific tenant.
     """
 
     BASE_URL = "https://api.twitter.com"
 
-    def __init__(self):
-        token = (
-            settings.TWITTER_BEARER_TOKEN.get_secret_value()
-            if settings.TWITTER_BEARER_TOKEN
-            else ""
-        )
-        if not token:
-            raise AdapterError("TWITTER_BEARER_TOKEN is not set")
-        query = settings.TWITTER_SEARCH_QUERY
+    def __init__(self, tenant_id: str):
+        self.tenant_id = tenant_id
+        token_entry = settings.TWITTER_BEARER_TOKENS.get(tenant_id)
+        query = settings.TWITTER_QUERIES.get(tenant_id)
+        if not token_entry:
+            raise AdapterError(f"TWITTER_BEARER_TOKEN for tenant '{tenant_id}' is not set")
         if not query:
-            raise AdapterError("TWITTER_SEARCH_QUERY is not set")
+            raise AdapterError(f"TWITTER_SEARCH_QUERY for tenant '{tenant_id}' is not set")
 
-        self.client = httpx.AsyncClient(base_url=self.BASE_URL, timeout=10)
-        self.headers = {"Authorization": f"Bearer {token}"}
+        self.token = token_entry.get_secret_value()
         self.query = query
         self.page_size = settings.PAGE_SIZE
+        self.client = httpx.AsyncClient(base_url=self.BASE_URL, timeout=10)
+        self.headers = {"Authorization": f"Bearer {self.token}"}
 
     async def fetch(self, since: datetime, until: datetime) -> AsyncIterator[Feedback]:
         url = "/2/tweets/search/recent"
@@ -51,18 +49,20 @@ class TwitterPullAdapter(BaseFetcher):
             resp = await self.client.get(url, params=params, headers=self.headers)
             resp.raise_for_status()
         except HTTPStatusError as e:
-            # Rate-limit fallback stub
-            if e.response.status_code == 429 or e.response.status_code == 401:
-                logger.warning("Twitter rate limit hit; emitting stub tweet")
+            code = e.response.status_code if e.response else None
+            if code in (401, 429):
+                logger.warning(
+                    f"Twitter fetch error {code} for tenant '{self.tenant_id}'; emitting stub tweet"
+                )
                 yield Feedback(
                     id=uuid.uuid4(),
                     external_id="stub-twitter",
                     source_type="twitter",
                     source_instance="search",
-                    tenant_id="default",
+                    tenant_id=self.tenant_id,
                     created_at=datetime.utcnow(),
                     fetched_at=datetime.utcnow(),
-                    body="Stub tweet due to rate limit",
+                    body="Stub tweet due to rate limit or auth error",
                     metadata_={},
                 )
                 return
@@ -72,15 +72,19 @@ class TwitterPullAdapter(BaseFetcher):
         for item in data.get("data", []):
             ext_id = item.get("id")
             text = item.get("text")
-            # parse ISO timestamp, stripping trailing Z if present
-            ts = item.get("created_at").rstrip("Z")
-            created_at = datetime.fromisoformat(ts)
-            fb = Feedback(
+            # strip trailing 'Z' for fromisoformat
+            ts = item.get("created_at", "").rstrip("Z")
+            try:
+                created_at = datetime.fromisoformat(ts)
+            except Exception:
+                created_at = datetime.utcnow()
+
+            yield Feedback(
                 id=uuid.uuid5(uuid.NAMESPACE_URL, ext_id),
                 external_id=ext_id,
                 source_type="twitter",
                 source_instance="search",
-                tenant_id="default",
+                tenant_id=self.tenant_id,
                 created_at=created_at,
                 fetched_at=datetime.utcnow(),
                 body=text,
@@ -90,6 +94,5 @@ class TwitterPullAdapter(BaseFetcher):
                     if k not in ("id", "text", "created_at")
                 },
             )
-            yield fb
 
         await self.client.aclose()
