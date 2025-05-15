@@ -10,14 +10,19 @@ from pydantic import SecretStr
 import app.main as app_module
 from config.settings import settings
 
+TENANT = "tenant1"
 
-# 1. Ensure the app imports the dummy secret
+
 @pytest.fixture(autouse=True)
 def set_dummy_secret(monkeypatch):
-    monkeypatch.setattr(settings, "INTERCOM_SECRET", SecretStr("dummy"))
+    """
+    Ensure settings.INTERCOM_SECRETS contains our test tenant
+    so the handler __init__ won't fail.
+    """
+    # inject or override the dict entry
+    monkeypatch.setitem(settings.INTERCOM_SECRETS, TENANT, SecretStr("dummy"))
 
 
-# 2. TestClient against your FastAPI app
 client = TestClient(app_module.app)
 
 
@@ -31,27 +36,27 @@ def test_intercom_push_endpoint(monkeypatch):
     payload = load_payload()
     captured = {}
 
-    # 3. Define an async fake_ingest for FastAPI to await
+    # fake ingest coroutine
     async def fake_ingest(fb):
         captured["fb"] = fb
         return True
 
-    # 4. Monkey-patch the ingest function *in app.main*, not services
+    # patch the ingest function used in the route
     monkeypatch.setattr(app_module, "ingest", fake_ingest)
 
-    # 5. Exercise the HTTP endpoint
-    response = client.post("/webhook/intercom/my-tenant", json=payload)
+    # post to the webhook, using our TENANT in the path
+    response = client.post(f"/webhook/intercom/{TENANT}", json=payload)
     assert response.status_code == 200
 
     data = response.json()
     assert data["status"] == "ok"
     assert data["inserted"] is True
 
-    # 6. Validate the captured Feedback
+    # verify that the handler saw the correct tenant_id
     fb = captured.get("fb")
     assert fb is not None
     assert fb.external_id == payload["data"]["item"]["id"]
     assert fb.source_type == "intercom"
     assert fb.source_instance == "push"
-    assert fb.tenant_id == "my-tenant"
+    assert fb.tenant_id == TENANT
     assert "New user message!" in fb.body

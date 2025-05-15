@@ -13,27 +13,23 @@ logger = logging.getLogger(__name__)
 
 class IntercomPushHandler(BasePushHandler):
     """
-    Handle incoming Intercom webhook JSON.
-    Expects a payload matching Intercom’s conversation.created or conversation.admin.replied schema.
+    Handle incoming Intercom webhook JSON for a specific tenant.
     """
 
-    def __init__(self):
-        secret = (
-            settings.INTERCOM_SECRET.get_secret_value()
-            if settings.INTERCOM_SECRET
-            else ""
-        )
-        if not secret:
-            raise AdapterError("INTERCOM_SECRET is not set")
+    def __init__(self, tenant_id: str):
+        self.tenant_id = tenant_id
+        secret_entry = settings.INTERCOM_SECRETS.get(tenant_id)
+        if not secret_entry:
+            raise AdapterError(f"INTERCOM_SECRET for tenant '{tenant_id}' is not set")
+        self.secret = secret_entry.get_secret_value()
         self.signature_header = "X-Intercom-Signature"
 
     async def handle(self, payload: Dict) -> Feedback:
-        # TODO: validate HMAC signature from headers if needed
+        # TODO: validate HMAC signature from headers if needed, using self.secret
         conv = payload.get("data", {}).get("item", {})
         ext_id = conv.get("id") or str(uuid.uuid4())
-        created = datetime.fromtimestamp(
-            conv.get("created_at", datetime.utcnow().timestamp())
-        )
+        created_ts = conv.get("created_at", datetime.utcnow().timestamp())
+        created = datetime.fromtimestamp(created_ts)
         body = conv.get("conversation_message", {}).get("body", "")
 
         fb = Feedback(
@@ -41,12 +37,12 @@ class IntercomPushHandler(BasePushHandler):
             external_id=ext_id,
             source_type="intercom",
             source_instance="push",
-            tenant_id=payload.get("tenant_id", "default"),
+            tenant_id=self.tenant_id,
             created_at=created,
             fetched_at=datetime.utcnow(),
             lang=conv.get("language"),
             body=body,
             metadata_={"raw": payload},
         )
-        logger.info(f"Intercom webhook -> Feedback {ext_id}")
+        logger.info(f"Intercom webhook for tenant '{self.tenant_id}' → Feedback {ext_id}")
         return fb

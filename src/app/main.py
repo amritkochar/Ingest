@@ -37,13 +37,12 @@ async def startup_event():
 @app.post("/webhook/intercom/{tenant_id}")
 async def intercom_webhook(
     tenant_id: str,
-    request: Request,
-    x_intercom_signature: str = Header(None),
+    request: Request
 ):
     payload = await request.json()
     payload["tenant_id"] = tenant_id
 
-    handler: BasePushHandler = IntercomPushHandler()
+    handler: BasePushHandler = IntercomPushHandler(tenant_id)
     try:
         fb = await handler.handle(payload)
     except Exception as e:
