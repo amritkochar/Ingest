@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
@@ -18,7 +19,17 @@ logging.basicConfig(
     level=settings.LOG_LEVEL, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
 )
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup logic
+    schedule_jobs()
+    yield
+    # shutdown logic (if any)
+    # e.g. await some_cleanup()
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 # ── Health Check ────────────────────────────────────────
